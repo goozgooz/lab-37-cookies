@@ -1,52 +1,251 @@
-401 JS --  Lab 37 auth/cookies
+SLUGGRAM
 ===
+> a social photo platform REST API
 
-## Submission Instructions
-  * Work in a fork of this repository
-  * Work in a branch on your fork
-  * Write all of your code in a directory named `lab-` + `<your name>` **e.g.** `lab-duncan`
-  * Submit a pull request to this repository
-  * Submit a link to your pull request on canvas
-  * Submit a question, observation, and how long you spent on canvas  
-i
+## Configureation
+Create a `.env` file and configure it with the following enviroment variables 
+``` bash
+PORT=3000 
+DEBUG=true
+CORS_ORIGINS='<one or more cors orgins (space seporated)>' 
+MONGO_URI='<mongo uri>'
+SECRET='<random string>'
+AWS_ACCESS_KEY_ID='<a aws access key id>'
+AWS_SECRET_ACCESS_KEY='<a aws secret access key>'
+AWS_BUCKET='<a aws bucket>'
+```
 
-## Requirements  
-#### backend setup
-* clone down [sluggram](http://github.com/slugbyte/sluggram) on you your computer
-* or use your week 5 project 
+## Running Sluggam 
+* Start a mongodb `yarn db-on`
+* Start the server `yarn start`
 
-#### Configuration  
-##### frontend/
-* **README.md** -- with a documention about your lab
-* **.babelrc** -- with all dependencies and dev-dependencies 
-* **.eslintrc** -- with the class .eslintrc file
-* **.gitignore** -- with a robust gitignore
-* **.eslintignore** -- with the class .eslintignore
-* **yarn.lock** -- with the yarn lockfile
-* **package.json** -- with all dependencies and dev-dependencies 
-* **webpack.config.js** -- with webpack config
-* **src/** -- containing the front end code
-* **src/main.js** -- renders the app
-* **src/style** -- containing your sass
-* **src/style/main.scss** -- for importing and including reset and base
-* **src/style/_vars.scss** -- sass variables
-* **src/style/_reset.scss** -- sass reset 
-* **src/style/_base.scss** -- base styles 
-* **src/style/_layout.scss** -- layout styles 
- 
-#### Feature Tasks 
-* Create a frontend that follows react redux best pratices
-* Create a landing page that enables a user to singup or login 
-* Redirect the user to the dashboard page on signup or login 
-* Store the users token in a cookie or localstorage on sign in 
+## API Resources
+#### User Model
+The user model is used in the backend strickly for authentication and authorization. The user model will never be returned from the API, however userID's are stored on Profiles, Photos, and Comments for authorzation validation.  
 
-#### Test
-* Test your redux reducers 
-* Test your util methods
+* `_id` - an unique database genorated string which uniqly identifys a user
+* `email` - a unique string which stores the users email
+* `username` - a unique string that stores the users username
+* `passwordHash` - a string that holds a users hashed password
+* `tokenSeed` - a unique and random string used to genorate authorization tokens 
 
-## Bonus 2pts
-* Create full crud for two resources 
+#### Profile Model
+Each user can have a single profile. Authorization is required for Creating, Updating, and Deleteing Profiles but they have public read access.  
 
-####  Documentation  
-Write a description of the project in your README.md
+* `_id` - an unique database genorated string which uniqly identifys a profile  
+* `owner` - the user id of the profiles creator 
+* `email` - a unique string which stores the profiles email
+* `username` - a unique string that stores the profiles profilename
+* `avatar` - a string holding a URL to a profile photo
+* `bio` - a string holding a profiles bio 
 
+#### Photo Model
+Each user can have may photos. Authorization is required for Creating, Updating, and Deleteing Photos but they have public read access.
+
+* `_id` - an unique database genorated string which uniqly identifys a profile  
+* `owner` - the user id of the photos creator 
+* `profile` - stores a the creators profile ID. the profile is populated on GET requests
+* `comments` - stores an array of comment IDs. the comments are populated on GET requests
+* `url` - a string which store a url to the photo
+* `description` - a string with a description of the photo
+
+#### Comment Model
+Each user can have many comments, and each photo can have may comments. Authorization is required for Creating, Updating, and Deleteing Comments but they have public read access.
+
+* `_id` - an unique database genorated string which uniqly identifys a profile  
+* `owner` - the user id of the photos creator 
+* `profile` - stores a the creators profile ID. the profile is populated on GET requests
+* `photoID` - stores the photo id of the photo the comment is a response to 
+* `content` - a string with the users comment
+
+## Auth 
+Sluggram uses Basic authentication and Bearer authorization to enforce access controls. Basic and Bearer auth both use the HTTP `Authorization` header to pass credentials on a request.
+
+#### Basic Authentication
+Once a user account has been created Basic Authentication can be used to make a request on behalf of the account. To create a Basic Authorzation Header the client must base64 encode a string with the username and password seporated by a colon. Then the encoded string can then be appened to the string `'Basic '` and set to an `Authorization` header on an HTTP Request.    
+
+``` javascript
+// Example of formating a Basic Authentication header in Javascript 
+let username = 'slugbyte'
+let password = 'abcd1234'
+
+let encoded = window.btoa(`${username}:${password}`)
+let headers = {
+  Authorization: `Basic ${encoded}`
+}
+```
+
+#### Bearer Authorization
+After a successfull signup or login request the client will receive a token. Bearer Authorization uses that token to make a request on behalf of that user account. The token should be append to the string `'Bearer '` and set to an Authorization header on an HTTP Request.
+
+``` javascript
+// Example of formating a Bearer Authorization header in Javascript
+let token = '11983261983261982643918649814613298619823698243'
+
+let headers = {
+  Authorization: `Beaer ${token}`
+}
+```
+
+---
+
+
+#### POST `/signup`
+a HTTP POST request to /signup will create a new user account.
+
+###### request 
+* Expected Headers
+  * Content-Type: application/json
+* Request Body
+  * JSON containing a username, email and password
+
+``` json 
+{
+  "username": "slugbyte",
+  "email": "slugbyte@slugbyte.com",
+  "password": "abcd1234"
+}
+```
+
+###### response
+The response body will be a **bearer token**.
+
+--- 
+
+#### GET `/login`
+A HTTP GET request to /login will login (fetch a token) to an existing user account.
+
+###### request
+* Expected Headers 
+  * Basic Authorization for the user account
+
+###### response 
+The response body will be a **bearer token**.
+
+## Profiles
+#### POST `/profiles`
+A HTTP POST request to /profiles will create a new profile. 
+
+###### request 
+* Expected Headers
+  * Bearer authorization
+  * Content-Type: multipart/form-data
+* Expected Body 
+  * a `bio` field containing string with the users bio
+  * a `image` filed with the users avatar image
+
+###### response 
+the response will be a JSON profile
+
+---
+
+#### GET `/profiles`
+a HTTP GET request to /profiles will return an array of profiles
+###### request 
+* Optional Query Paramiters
+  * SEE PAGINATION
+
+###### response
+See pageination
+
+---
+
+#### GET `/profiles/:id`
+a HTTP GET request to /profiles/:id  will return a profile
+###### response
+the response will return a JSON profile 
+
+---
+
+#### GET `/profiles/me`
+a HTTP GET request to /profiles/:id  will return a profile
+###### request 
+* Expected Headers
+  * Bearer authorization
+###### response
+the response will return a users JSON profile 
+
+
+---
+
+#### PUT `/profiles/:id`
+a HTTP PUT request to /profiles/:id will update a profile
+###### request 
+* Expected Headers
+  * Bearer authorization
+  * Content-Type: multipart/form-data or application/json
+* Optional Body Fields
+  * an optional `image` filed with the users avatar image
+    * photo uploads are only posible for Content-Type: multipart/form-data
+  * an optional `bio` field containing string with the users bio
+
+###### response
+the response will return a JSON profile 
+
+---
+
+#### DELETE `/profiles/:id`
+a HTTP DELETE request to /profiles/:id will delete a profile
+###### request
+* Expected Headers
+  * Bearer authorization
+
+###### response
+the response will have no body and a status of **204**
+
+## Photos 
+#### POST `/photos`
+A HTTP POST request to /photos will create a new photo. A photo cannot be created until the User has created a profile.
+
+###### request 
+* Expected Headers
+  * Bearer authorization
+  * Content-Type: multipart/form-data
+* Expected Body 
+  * a `photo` filed with the file asset
+  * a `description` field
+
+###### response 
+the response will be a JSON photo
+
+#### GET `/photos`
+a HTTP GET request to /photos will return an array of photos
+###### request 
+* Optional Query Paramiters
+  * SEE PAGINATION
+
+###### response
+See pageination
+
+#### GET `/photos/:id`
+a HTTP GET request to /photos/:id  will return a photo
+###### response
+the response will return a JSON profile 
+
+#### PUT `/photos/:id`
+a HTTP PUT request to /photos/:id will update a profile
+
+###### request 
+* Expected Headers
+  * Bearer authorization
+  * Content-Type: multipart/form-data or application/json
+* Optional Body Fields
+  * an optional `photo` filed with a replacement photo
+    * photo uploads are only posible for Content-Type: multipart/form-data
+  * an optional `description` 
+
+#### DELETE `/photos/:id`
+a HTTP DELETE request to /photos/:id will delete a profile
+###### request
+* Expected Headers
+  * Bearer authorization
+
+###### response
+the response will have no body and a status of **204**
+
+## Comments
+#### POST `/comments`
+#### GET `/comments`
+#### GET `/comments/:id`
+#### PUT `/comments/:id`
+#### DELETE `/comments/:id`
