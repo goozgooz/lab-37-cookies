@@ -1,4 +1,7 @@
 import React from 'react';
+import {connect} from 'react-redux';
+import AuthForm from './auth-form'
+
 
 class Home extends React.Component {
 
@@ -6,12 +9,19 @@ class Home extends React.Component {
 
         return (
             <div>
-                <h2>Home</h2>
+              <AuthForm onComplete={this.props.signup} np/>
             </div>
         )
 
     }
-
 }
 
-export default Home;
+const mapStateToProps = state => ({
+
+})
+
+const mapDispatchToProps = (dispatch) => ({
+
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(Home);
